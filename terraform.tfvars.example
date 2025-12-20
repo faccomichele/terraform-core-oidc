@@ -1,0 +1,12 @@
+# Example Terraform variables configuration
+# Copy this file to terraform.tfvars and customize as needed
+
+aws_region   = "us-east-1"
+environment  = "dev"
+project_name = "oidc-provider"
+
+# Optional: Set a custom issuer URL (otherwise uses API Gateway URL)
+# issuer_url = "https://auth.example.com"
+
+# Optional: Set a custom domain name
+# domain_name = "auth.example.com"
