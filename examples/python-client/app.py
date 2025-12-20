@@ -95,5 +95,14 @@ if __name__ == '__main__':
     print(f'CLIENT_ID: {CLIENT_ID}')
     print(f'REDIRECT_URI: {REDIRECT_URI}')
     print('')
+    print('WARNING: This is a demo application!')
+    print('For production:')
+    print('  - Set debug=False')
+    print('  - Use a production WSGI server (gunicorn, uwsgi)')
+    print('  - Enable SSL/HTTPS')
+    print('  - Implement rate limiting')
+    print('')
     print('Navigate to: http://localhost:5000')
+    # WARNING: debug=True is for development only!
+    # For production, set debug=False and use a production WSGI server
     app.run(debug=True, port=5000)

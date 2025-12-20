@@ -93,14 +93,27 @@ For production use, you should:
 
 1. Use HTTPS for all communication
 2. Set a strong `SECRET_KEY` environment variable
-3. Disable Flask debug mode
+3. **Disable Flask debug mode** (set debug=False)
 4. Use a production WSGI server (e.g., Gunicorn, uWSGI)
-5. Implement proper error handling
-6. Add token refresh logic
-7. Store tokens securely
-8. Add CSRF protection
-9. Validate all inputs
-10. Use environment-specific configuration
+5. **Implement rate limiting** to prevent abuse
+6. Implement proper error handling
+7. Add token refresh logic
+8. Store tokens securely
+9. Add CSRF protection
+10. Validate all inputs
+11. Use environment-specific configuration
+12. Use a secure session store (Redis, database)
+
+### Security Issues in Demo
+
+This example has known security issues that are acceptable for development but **must be fixed for production**:
+
+- ❌ Flask debug mode enabled (can execute arbitrary code via debugger)
+- ❌ No rate limiting on authentication endpoints (vulnerable to brute force)
+- ❌ New session secret on each restart (invalidates existing sessions)
+- ❌ No HTTPS enforcement
+
+See the comments in the code for specific recommendations.
 
 ## Example with Gunicorn
 

@@ -96,11 +96,24 @@ For production use, you should:
 
 1. Use HTTPS for all communication
 2. Set `cookie.secure = true` in session configuration
-3. Use a secure session secret
-4. Implement proper error handling
-5. Add token refresh logic
-6. Store tokens securely (not in session for production)
-7. Implement logout functionality with the provider
-8. Add CSRF protection
-9. Validate all inputs
-10. Use environment-specific configuration
+3. Use a secure session secret from environment variables
+4. **Implement rate limiting** to prevent abuse (e.g., using express-rate-limit)
+5. Implement proper error handling
+6. Add token refresh logic
+7. Store tokens securely (not in session for production)
+8. Implement logout functionality with the provider
+9. Add CSRF protection
+10. Validate all inputs
+11. Use environment-specific configuration
+12. Use a session store (Redis, database) instead of in-memory sessions
+
+### Security Issues in Demo
+
+This example has known security issues that are acceptable for development but **must be fixed for production**:
+
+- ❌ No rate limiting on authentication endpoints (vulnerable to brute force)
+- ❌ Cookies sent without SSL enforcement (vulnerable to interception)
+- ❌ In-memory session store (not scalable, lost on restart)
+- ❌ Weak session secret (predictable, hardcoded)
+
+See the comments in the code for specific recommendations.

@@ -13,12 +13,20 @@ const REDIRECT_URI = process.env.REDIRECT_URI || 'http://localhost:3000/callback
 
 // Session configuration
 // WARNING: This is for demo purposes only!
-// In production, use a strong random secret from environment variables
+// In production:
+//   - Use a strong random secret from environment variables
+//   - Enable secure cookies (secure: true) with HTTPS
+//   - Implement rate limiting
+//   - Use a session store (Redis, database)
 app.use(session({
   secret: process.env.SESSION_SECRET || 'my-secret-key-change-in-production',
   resave: false,
   saveUninitialized: true,
-  cookie: { secure: false } // Set to true if using HTTPS in production
+  cookie: { 
+    secure: false, // Set to true in production with HTTPS
+    httpOnly: true,
+    maxAge: 3600000 // 1 hour
+  }
 }));
 
 let client;
@@ -69,6 +77,7 @@ app.get('/', (req, res) => {
 });
 
 // Initiate login
+// NOTE: For production, implement rate limiting to prevent abuse
 app.get('/login', (req, res) => {
   const code_verifier = generators.codeVerifier();
   const code_challenge = generators.codeChallenge(code_verifier);
