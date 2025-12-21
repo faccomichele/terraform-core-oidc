@@ -259,9 +259,11 @@ Resources:
                   - logs:DeleteRetentionPolicy
                 Resource:
                   - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/oidc-provider-${Environment}-*'
-                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group::log-stream:*'
+                  - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/oidc-provider-${Environment}-*:*'
               
               # Additional CloudWatch Logs permissions for API Gateway
+              # Note: logs:CreateLogGroup is repeated here with wildcard resource
+              # to allow API Gateway to create log groups with any name pattern
               - Sid: CloudWatchLogsAPIGateway
                 Effect: Allow
                 Action:
@@ -271,6 +273,8 @@ Resources:
                   - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
               
               # Terraform state and resource discovery
+              # Note: apigateway:GET is repeated here with wildcard resource
+              # to allow Terraform to list and discover all API Gateway resources
               - Sid: ResourceDiscovery
                 Effect: Allow
                 Action:
