@@ -229,9 +229,9 @@ The inline policy `TerraformDeploymentPolicy` has been added to the GitHub Actio
 
 **Resources**:
 - `arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/oidc-provider-${Environment}-*`
-- `arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group::log-stream:*`
+- `arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/oidc-provider-${Environment}-*:*`
 
-**Note**: Lambda automatically creates log groups, but Terraform needs permissions to manage them.
+**Note**: Lambda automatically creates log groups, but Terraform needs permissions to manage them. The second ARN with `:*` suffix covers log streams within the log groups.
 
 ---
 

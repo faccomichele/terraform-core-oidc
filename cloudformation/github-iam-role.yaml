@@ -248,6 +248,7 @@ Resources:
                   - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
               
               # CloudWatch Logs permissions (for Lambda)
+              # Note: Scoped to Lambda log groups for management operations (create, delete, configure)
               - Sid: CloudWatchLogsManagement
                 Effect: Allow
                 Action:
@@ -264,8 +265,9 @@ Resources:
                   - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/oidc-provider-${Environment}-*:*'
               
               # Additional CloudWatch Logs permissions for API Gateway
-              # Note: logs:CreateLogGroup is repeated here with wildcard resource
-              # to allow API Gateway to create log groups with any name pattern
+              # Separate statement with wildcard resource because API Gateway may create log groups
+              # with different naming patterns than Lambda. logs:CreateLogGroup is intentionally
+              # duplicated here to support both scoped Lambda operations and wildcard API Gateway needs.
               - Sid: CloudWatchLogsAPIGateway
                 Effect: Allow
                 Action:
@@ -275,8 +277,9 @@ Resources:
                   - !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*'
               
               # Terraform state and resource discovery
-              # Note: apigateway:GET is repeated here with wildcard resource
-              # to allow Terraform to list and discover all API Gateway resources
+              # Wildcard resource access is required for list/discovery operations that Terraform
+              # uses to refresh state and detect drift. apigateway:GET is intentionally duplicated
+              # here for discovery, while APIGatewayManagement has scoped resources for CRUD operations.
               - Sid: ResourceDiscovery
                 Effect: Allow
                 Action:
