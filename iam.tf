@@ -1,6 +1,6 @@
 # IAM role for Lambda execution
 resource "aws_iam_role" "lambda_exec" {
-  name = "${var.project_name}-${var.environment}-lambda-exec"
+  name = "${local.project_name}-${local.environment}-lambda-exec"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -16,7 +16,7 @@ resource "aws_iam_role" "lambda_exec" {
   })
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-lambda-exec"
+    Name = "${local.project_name}-${local.environment}-lambda-exec"
   }
 }
 
@@ -28,7 +28,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
 
 # Custom policy for Lambda to access DynamoDB, S3, and Secrets Manager
 resource "aws_iam_role_policy" "lambda_oidc" {
-  name = "${var.project_name}-${var.environment}-lambda-oidc-policy"
+  name = "${local.project_name}-${local.environment}-lambda-oidc-policy"
   role = aws_iam_role.lambda_exec.id
 
   policy = jsonencode({
