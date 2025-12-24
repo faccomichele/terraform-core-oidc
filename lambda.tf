@@ -1,6 +1,7 @@
 # Local variables
 locals {
-  issuer_url = var.issuer_url != "" ? var.issuer_url : "${aws_api_gateway_deployment.oidc.invoke_url}${aws_api_gateway_stage.oidc.stage_name}"
+  # issuer_url = var.issuer_url != "" ? var.issuer_url : "${aws_api_gateway_deployment.oidc.invoke_url}${aws_api_gateway_stage.oidc.stage_name}"
+  issuer_url = "CHANGE_ME"
   lambda_source_dir = "${path.module}/lambda/src"
 }
 
