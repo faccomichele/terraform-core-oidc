@@ -29,10 +29,10 @@ on:
         type: boolean
         default: true
 
-# permissions:
-#   id-token: write
-#   contents: write
-#   pull-requests: write
+permissions:
+  id-token: write
+  pull-requests: write
+  contents: read
   
 jobs:
   main:
