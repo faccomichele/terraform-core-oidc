@@ -14,9 +14,7 @@ terraform {
       version = "~> 3.5"
     }
   }
-  backend "s3" {}
 }
-
 
 provider "aws" {
   region = local.aws_region
