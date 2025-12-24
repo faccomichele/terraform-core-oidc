@@ -1,11 +1,11 @@
 # Secrets Manager secret for JWT signing keys
 resource "aws_secretsmanager_secret" "jwt_keys" {
-  name                    = "${var.project_name}-${var.environment}-jwt-keys-${random_id.secret_suffix.hex}"
+  name                    = "${local.project_name}-${local.environment}-jwt-keys-${random_id.secret_suffix.hex}"
   description             = "RSA key pair for JWT signing"
   recovery_window_in_days = 7
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-jwt-keys"
+    Name = "${local.project_name}-${local.environment}-jwt-keys"
   }
 }
 

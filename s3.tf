@@ -1,9 +1,9 @@
 # S3 bucket for static assets
 resource "aws_s3_bucket" "oidc_assets" {
-  bucket = "${var.project_name}-${var.environment}-assets-${random_id.bucket_suffix.hex}"
+  bucket = "${local.project_name}-${local.environment}-assets-${random_id.bucket_suffix.hex}"
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-assets"
+    Name = "${local.project_name}-${local.environment}-assets"
   }
 }
 

@@ -4,12 +4,12 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                          OIDC Provider                               │
+│                          OIDC Provider                              │
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────┐         ┌──────────────────────────────────────────┐
 │              │         │                                          │
-│   Client     │────────▶│         API Gateway (REST API)           │
+│   Client     │───────▶│        API Gateway (REST API)             │
 │ Application  │         │                                          │
 │              │         │  /.well-known/openid-configuration       │
 └──────────────┘         │  /auth                                   │
@@ -30,8 +30,8 @@
          └────────┬─────────┘ └────────┬─────────┘ └────────┬─────────┘
                   │                    │                     │
          ┌────────┴────────────────────┴─────────────────────┴─────────┐
-         │                                                              │
-         ▼                           ▼                          ▼       │
+         │                                                             │
+         ▼                           ▼                          ▼      │
 ┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┤
 │   DynamoDB       │      │   DynamoDB       │      │   Secrets        │
 │   Users Table    │      │   Clients Table  │      │   Manager        │
@@ -74,76 +74,76 @@
 │   App    │                                           │              │
 └────┬─────┘                                           └──────┬───────┘
      │                                                        │
-     │ 1. Authorization Request                              │
-     │   GET /auth?client_id=...&redirect_uri=...&           │
-     │        response_type=code&scope=openid                │
+     │ 1. Authorization Request                               │
+     │   GET /auth?client_id=...&redirect_uri=...&            │
+     │        response_type=code&scope=openid                 │
      │───────────────────────────────────────────────────────▶
      │                                                        │
-     │                          2. Show Login Page           │
+     │                          2. Show Login Page            │
      │◀───────────────────────────────────────────────────────
      │                                                        │
-     │ 3. User submits credentials                           │
-     │   POST /auth (username, password)                     │
+     │ 3. User submits credentials                            │
+     │   POST /auth (username, password)                      │
      │───────────────────────────────────────────────────────▶
      │                                                        │
-     │                     4. Verify credentials             │
-     │                        (DynamoDB Users)               │
+     │                     4. Verify credentials              │
+     │                        (DynamoDB Users)                │
      │                                                        │
-     │                     5. Create auth code               │
-     │                        (DynamoDB Auth Codes)          │
+     │                     5. Create auth code                │
+     │                        (DynamoDB Auth Codes)           │
      │                                                        │
-     │ 6. Redirect with code                                 │
-     │    Location: redirect_uri?code=ABC&state=xyz          │
+     │ 6. Redirect with code                                  │
+     │    Location: redirect_uri?code=ABC&state=xyz           │
      │◀───────────────────────────────────────────────────────
      │                                                        │
-     │ 7. Token Request                                      │
-     │   POST /token                                         │
-     │   grant_type=authorization_code&code=ABC&             │
-     │   client_id=...&client_secret=...                     │
+     │ 7. Token Request                                       │
+     │   POST /token                                          │
+     │   grant_type=authorization_code&code=ABC&              │
+     │   client_id=...&client_secret=...                      │
      │───────────────────────────────────────────────────────▶
      │                                                        │
-     │                     8. Validate code                  │
-     │                        (DynamoDB Auth Codes)          │
+     │                     8. Validate code                   │
+     │                        (DynamoDB Auth Codes)           │
      │                                                        │
-     │                     9. Validate client                │
-     │                        (DynamoDB Clients)             │
+     │                     9. Validate client                 │
+     │                        (DynamoDB Clients)              │
      │                                                        │
-     │                    10. Get user data                  │
-     │                        (DynamoDB Users)               │
+     │                    10. Get user data                   │
+     │                        (DynamoDB Users)                │
      │                                                        │
-     │                    11. Sign tokens                    │
-     │                        (Secrets Manager - RSA Keys)   │
+     │                    11. Sign tokens                     │
+     │                        (Secrets Manager - RSA Keys)    │
      │                                                        │
-     │                    12. Create refresh token           │
-     │                        (DynamoDB Refresh Tokens)      │
+     │                    12. Create refresh token            │
+     │                        (DynamoDB Refresh Tokens)       │
      │                                                        │
-     │ 13. Token Response                                    │
-     │    {                                                  │
-     │      "access_token": "...",                           │
-     │      "id_token": "...",                               │
-     │      "refresh_token": "...",                          │
-     │      "token_type": "Bearer",                          │
-     │      "expires_in": 3600                               │
-     │    }                                                  │
+     │ 13. Token Response                                     │
+     │    {                                                   │
+     │      "access_token": "...",                            │
+     │      "id_token": "...",                                │
+     │      "refresh_token": "...",                           │
+     │      "token_type": "Bearer",                           │
+     │      "expires_in": 3600                                │
+     │    }                                                   │
      │◀───────────────────────────────────────────────────────
      │                                                        │
-     │ 14. Get User Info                                     │
-     │    GET /userinfo                                      │
-     │    Authorization: Bearer <access_token>               │
+     │ 14. Get User Info                                      │
+     │    GET /userinfo                                       │
+     │    Authorization: Bearer <access_token>                │
      │───────────────────────────────────────────────────────▶
      │                                                        │
-     │                    15. Verify token                   │
-     │                        (JWT verification)             │
+     │                    15. Verify token                    │
+     │                        (JWT verification)              │
      │                                                        │
-     │                    16. Get user data                  │
-     │                        (DynamoDB Users)               │
+     │                    16. Get user data                   │
+     │                        (DynamoDB Users)                │
      │                                                        │
-     │ 17. User Info Response                                │
-     │    {                                                  │
-     │      "sub": "user-123",                               │
-     │      "name": "Demo User",                             │
-     │      "email": "demo@example.com"                      │
-     │    }                                                  │
+     │ 17. User Info Response                                 │
+     │    {                                                   │
+     │      "sub": "user-123",                                │
+     │      "name": "Demo User",                              │
+     │      "email": "demo@example.com"                       │
+     │    }                                                   │
      │◀───────────────────────────────────────────────────────
      │                                                        │
 ```

@@ -1,0 +1,25 @@
+# This triggers on all PRs to validate the change using Terraform Plan
+
+name: PR - TF Plan
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  dev:
+    if: ${{ github.event.pull_request.merged == true }}
+    name: "[DEV] ${{ matrix.directory }} - ${{ matrix.region }}"
+    uses: faccomichele/utils-n-scripts/.github/workflows/terraform-plan-apply.yml@main
+    with:
+      environment: 'dev'
+      region: 'eu-central-1'
+      working-directory: '.'
+      just-plan: true
+    secrets: inherit

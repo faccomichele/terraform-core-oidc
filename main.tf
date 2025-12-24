@@ -17,12 +17,12 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region = local.aws_region
 
   default_tags {
     tags = {
-      Project     = "terraform-core-oidc"
-      Environment = var.environment
+      Project     = var.tags["Repository"] != null ? var.tags["Repository"] : "unknown"
+      Environment = local.environment
       ManagedBy   = "Terraform"
     }
   }

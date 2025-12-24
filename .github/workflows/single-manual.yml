@@ -11,19 +11,12 @@ on:
         required: true
         options:
         - dev
-        # - stg
-        # - prod
       region:
         description: 'Select the target environment'
         type: choice
         required: true
         options:
-        # - us-west-2
-        # - us-east-1
-        # - us-west-1
         - eu-central-1
-        # - eu-west-1
-        # - ap-southeast-2
       plan-instead-of-apply:
         description: 'Run terraform "plan" instead of "apply"'
         type: boolean
