@@ -80,6 +80,27 @@ Parameters:
     Description: The account ID for Terraform access managed policy (from terraform-core-aws stack)
 
 Resources:
+  # IAM role for API Gateway to push logs to CloudWatch
+  APIGatewayCloudWatchLogsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: API Gateway CloudWatch Logs Integration
+
   # IAM role for GitHub Actions (repository-specific)
   GitHubActionsRole:
     Type: AWS::IAM::Role
@@ -143,6 +164,15 @@ Resources:
                   - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis'
                   - !Sub 'arn:aws:apigateway:${AWS::Region}::/restapis/*'
                   - !Sub 'arn:aws:apigateway:${AWS::Region}::/tags/*'
+              
+              # API Gateway account settings (required for CloudWatch Logs integration)
+              - Sid: APIGatewayAccountSettings
+                Effect: Allow
+                Action:
+                  - apigateway:UpdateAccount
+                  - apigateway:GET
+                Resource:
+                  - !Sub 'arn:aws:apigateway:${AWS::Region}::/account'
               
               # DynamoDB permissions
               - Sid: DynamoDBManagement
@@ -232,6 +262,7 @@ Resources:
                   - iam:PassRole
                 Resource:
                   - !Sub 'arn:aws:iam::${AWS::AccountId}:role/oidc-provider-${Environment}-lambda-exec'
+                  - !GetAtt APIGatewayCloudWatchLogsRole.Arn
               
               # IAM permissions for managed policies (read-only)
               - Sid: IAMPolicyReadAccess
@@ -306,4 +337,17 @@ Resources:
           Value: !Sub 'IAM role for GitHub Actions in ${Organization}/${ProjectName}'
         - Key: Region
           Value: !Ref 'AWS::Region'
+
+Outputs:
+  APIGatewayCloudWatchLogsRoleArn:
+    Description: ARN of the IAM role for API Gateway CloudWatch Logs integration
+    Value: !GetAtt APIGatewayCloudWatchLogsRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-APIGatewayCloudWatchLogsRoleArn'
+  
+  GitHubActionsRoleArn:
+    Description: ARN of the IAM role for GitHub Actions
+    Value: !GetAtt GitHubActionsRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-GitHubActionsRoleArn'
 
