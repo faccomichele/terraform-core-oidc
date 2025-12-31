@@ -170,6 +170,7 @@ Resources:
                 Effect: Allow
                 Action:
                   - apigateway:UpdateAccount
+                  - apigateway:PATCH
                   - apigateway:GET
                 Resource:
                   - !Sub 'arn:aws:apigateway:${AWS::Region}::/account'
@@ -241,7 +242,7 @@ Resources:
                 Resource:
                   - !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:oidc-provider-${Environment}-jwt-keys-*'
               
-              # IAM permissions for Lambda execution role
+              # IAM permissions for Lambda execution role and API Gateway CloudWatch role
               - Sid: IAMRoleManagement
                 Effect: Allow
                 Action:
@@ -262,7 +263,7 @@ Resources:
                   - iam:PassRole
                 Resource:
                   - !Sub 'arn:aws:iam::${AWS::AccountId}:role/oidc-provider-${Environment}-lambda-exec'
-                  - !GetAtt APIGatewayCloudWatchLogsRole.Arn
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/oidc-provider-${Environment}-api-gateway-cloudwatch'
               
               # IAM permissions for managed policies (read-only)
               - Sid: IAMPolicyReadAccess
