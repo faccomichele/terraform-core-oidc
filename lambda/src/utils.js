@@ -186,6 +186,13 @@ async function getUserByUsername(username) {
   return items.length > 0 ? items[0] : null;
 }
 
+/**
+ * Create a new user with bcrypt password hashing
+ * @param {string} username - The username for the new user
+ * @param {string} password - The plain text password (will be hashed with bcrypt)
+ * @param {string} email - The email address for the new user
+ * @returns {Promise<object>} - The created user object (includes password_hash)
+ */
 async function createUser(username, password, email) {
   const userId = uuidv4();
   

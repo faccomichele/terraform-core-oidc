@@ -27,7 +27,8 @@ function validatePassword(password) {
     return createErrorResponse('invalid_request', 'Password must contain at least one number');
   }
   // Special characters: include common password special characters
-  if (!/[!@#$%^&*(),.?":{}|<>\-_+=~[\]\\]/.test(password)) {
+  // Using character class with properly escaped special characters
+  if (!/[!@#$%^&*(),.?":{}|<>\-_+=~\[\]\\]/.test(password)) {
     return createErrorResponse('invalid_request', 'Password must contain at least one special character');
   }
   return null;
