@@ -1,6 +1,6 @@
 output "api_gateway_url" {
   description = "Base URL of the API Gateway"
-  value       = aws_api_gateway_deployment.oidc.invoke_url
+  value       = "https://${aws_api_gateway_rest_api.oidc.id}.execute-api.${local.aws_region}.amazonaws.com/${local.environment}"
 }
 
 output "oidc_issuer_url" {

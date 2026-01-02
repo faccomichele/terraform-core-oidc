@@ -62,9 +62,7 @@ resource "aws_s3_object" "login_page" {
   bucket       = aws_s3_bucket.assets.id
   key          = "login.html"
   content_type = "text/html"
-  content = templatefile("${path.module}/static/login.html", {
-    api_url = "${aws_api_gateway_deployment.oidc.invoke_url}${local.environment}"
-  })
+  source       = "${path.module}/static/login.html"
 
   etag = filemd5("${path.module}/static/login.html")
 
@@ -78,9 +76,7 @@ resource "aws_s3_object" "landing_page" {
   bucket       = aws_s3_bucket.assets.id
   key          = "landing.html"
   content_type = "text/html"
-  content = templatefile("${path.module}/static/landing.html", {
-    api_url = "${aws_api_gateway_deployment.oidc.invoke_url}${local.environment}"
-  })
+  source       = "${path.module}/static/landing.html"
 
   etag = filemd5("${path.module}/static/landing.html")
 

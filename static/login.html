@@ -188,8 +188,32 @@
   </div>
 
   <script>
-    // Parse URL parameters
+    // Get API URL from query parameter or derive from issuer
     const urlParams = new URLSearchParams(window.location.search);
+    const apiUrl = urlParams.get('api_url') || deriveApiUrl();
+    
+    // Derive API URL from the referrer or construct from known pattern
+    function deriveApiUrl() {
+      // Try to get from referrer
+      if (document.referrer) {
+        try {
+          const refUrl = new URL(document.referrer);
+          // If referrer is from API Gateway, use it
+          if (refUrl.hostname.includes('execute-api') || refUrl.hostname.includes('amazonaws.com')) {
+            return refUrl.origin + refUrl.pathname.split('/').slice(0, -1).join('/');
+          }
+        } catch (e) {
+          console.error('Error parsing referrer:', e);
+        }
+      }
+      
+      // Fallback: try to derive from current S3 bucket URL or use a default
+      // This is a placeholder - in production, you might want to set this more reliably
+      console.warn('Could not derive API URL, form submission may fail');
+      return '';
+    }
+    
+    // Parse URL parameters
     const clientId = urlParams.get('client_id');
     const redirectUri = urlParams.get('redirect_uri');
     const responseType = urlParams.get('response_type');
@@ -245,7 +269,7 @@
         if (codeChallengeMethod) formData.append('code_challenge_method', codeChallengeMethod);
 
         // Submit to auth endpoint
-        const response = await fetch('${api_url}/auth', {
+        const response = await fetch(apiUrl + '/auth', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
@@ -262,7 +286,7 @@
             window.location.href = location;
           } else {
             // If we can't get the location, try to parse from response
-            window.location.href = '${api_url}/auth?' + formData.toString();
+            window.location.href = apiUrl + '/auth?' + formData.toString();
           }
         } else if (response.ok) {
           const data = await response.json();

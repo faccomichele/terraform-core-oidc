@@ -81,6 +81,12 @@ exports.handler = async (event) => {
       if (code_challenge) loginUrl.searchParams.append('code_challenge', code_challenge);
       if (code_challenge_method) loginUrl.searchParams.append('code_challenge_method', code_challenge_method);
       
+      // Add API URL so the login page can POST back
+      const apiUrl = getApiUrl(event);
+      if (apiUrl) {
+        loginUrl.searchParams.append('api_url', apiUrl);
+      }
+      
       return {
         statusCode: 302,
         headers: {
@@ -106,6 +112,12 @@ exports.handler = async (event) => {
       if (code_challenge_method) loginUrl.searchParams.append('code_challenge_method', code_challenge_method);
       loginUrl.searchParams.append('error', 'invalid_credentials');
       loginUrl.searchParams.append('error_description', 'Invalid username or password');
+      
+      // Add API URL
+      const apiUrl = getApiUrl(event);
+      if (apiUrl) {
+        loginUrl.searchParams.append('api_url', apiUrl);
+      }
       
       return {
         statusCode: 302,
@@ -145,6 +157,12 @@ exports.handler = async (event) => {
     landingUrl.searchParams.append('redirect_uri', redirect_uri);
     if (state) landingUrl.searchParams.append('state', state);
     
+    // Add API URL for landing page
+    const apiUrl = getApiUrl(event);
+    if (apiUrl) {
+      landingUrl.searchParams.append('api_url', apiUrl);
+    }
+    
     return {
       statusCode: 302,
       headers: {
@@ -160,3 +178,30 @@ exports.handler = async (event) => {
     return createErrorResponse('server_error', 'Internal server error', 500);
   }
 };
+
+// Helper function to extract API URL from event
+function getApiUrl(event) {
+  try {
+    // Get from request context
+    const requestContext = event.requestContext;
+    if (requestContext) {
+      const domainName = requestContext.domainName;
+      const stage = requestContext.stage;
+      if (domainName && stage) {
+        return `https://${domainName}/${stage}`;
+      }
+    }
+    
+    // Fallback: try to get from headers
+    const host = event.headers?.Host || event.headers?.host;
+    const stage = event.requestContext?.stage;
+    if (host && stage) {
+      return `https://${host}/${stage}`;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting API URL:', error);
+    return null;
+  }
+}

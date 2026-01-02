@@ -7,5 +7,5 @@ locals {
 }
 
 locals {
-  issuer_url = var.issuer_url != "" ? var.issuer_url : "${aws_api_gateway_deployment.oidc.invoke_url}${local.environment}"
+  issuer_url = var.issuer_url != "" ? var.issuer_url : "https://${aws_api_gateway_rest_api.oidc.id}.execute-api.${local.aws_region}.amazonaws.com/${local.environment}"
 }

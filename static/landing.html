@@ -225,8 +225,41 @@
   </div>
 
   <script>
-    // Get session from URL params or session storage
+    // Get API URL from query parameter or derive from referrer
     const urlParams = new URLSearchParams(window.location.search);
+    const apiUrl = urlParams.get('api_url') || deriveApiUrl();
+    
+    // Derive API URL from the referrer or construct from known pattern
+    function deriveApiUrl() {
+      // Try to get from referrer
+      if (document.referrer) {
+        try {
+          const refUrl = new URL(document.referrer);
+          // If referrer is from API Gateway, use it
+          if (refUrl.hostname.includes('execute-api') || refUrl.hostname.includes('amazonaws.com')) {
+            return refUrl.origin + refUrl.pathname.split('/').slice(0, -1).join('/');
+          }
+        } catch (e) {
+          console.error('Error parsing referrer:', e);
+        }
+      }
+      
+      // Fallback: try to get from session storage
+      const storedApiUrl = sessionStorage.getItem('oidc_api_url');
+      if (storedApiUrl) {
+        return storedApiUrl;
+      }
+      
+      console.warn('Could not derive API URL');
+      return '';
+    }
+    
+    // Save API URL to session storage for future use
+    if (apiUrl) {
+      sessionStorage.setItem('oidc_api_url', apiUrl);
+    }
+    
+    // Get session from URL params or session storage
     const sessionToken = urlParams.get('session') || sessionStorage.getItem('oidc_session');
     const clientId = urlParams.get('client_id');
     const redirectUri = urlParams.get('redirect_uri');
@@ -245,10 +278,10 @@
         }
 
         // Fetch user info and available applications
-        const response = await fetch('${api_url}/landing', {
+        const response = await fetch(apiUrl + '/landing', {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer $${sessionToken}`
+            'Authorization': `Bearer ${sessionToken}`
           }
         });
 
@@ -324,7 +357,7 @@
         if (state) params.append('state', state);
 
         // Redirect to complete authorization
-        window.location.href = `${api_url}/complete-auth?$${params.toString()}`;
+        window.location.href = apiUrl + '/complete-auth?' + params.toString();
 
       } catch (error) {
         console.error('Error selecting application:', error);
@@ -335,7 +368,8 @@
     // Logout function
     function logout() {
       sessionStorage.removeItem('oidc_session');
-      window.location.href = '${api_url}/logout';
+      sessionStorage.removeItem('oidc_api_url');
+      window.location.href = apiUrl + '/logout';
     }
 
     // Load applications on page load
