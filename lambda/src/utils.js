@@ -1,6 +1,7 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 const { SecretsManagerClient, GetSecretValueCommand, PutSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
+const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
@@ -8,6 +9,7 @@ const { v4: uuidv4 } = require('uuid');
 const dynamoClient = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(dynamoClient);
 const secretsClient = new SecretsManagerClient({});
+const ssmClient = new SSMClient({});
 
 const TABLES = {
   users: process.env.USERS_TABLE,
@@ -15,6 +17,44 @@ const TABLES = {
   authCodes: process.env.AUTH_CODES_TABLE,
   refreshTokens: process.env.REFRESH_TOKENS_TABLE
 };
+
+// Cache for issuer URL to avoid repeated SSM calls
+// Note: Lambda containers in Node.js handle one request at a time,
+// so module-level caching is safe for concurrent invocations
+let cachedIssuerUrl = null;
+let cacheTimestamp = null;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Get issuer URL from SSM Parameter Store
+async function getIssuerUrl() {
+  const now = Date.now();
+  
+  // Return cached value if still valid
+  if (cachedIssuerUrl && cacheTimestamp && (now - cacheTimestamp) < CACHE_TTL_MS) {
+    return cachedIssuerUrl;
+  }
+
+  try {
+    const response = await ssmClient.send(new GetParameterCommand({
+      Name: process.env.ISSUER_URL_PARAM_NAME
+    }));
+    
+    cachedIssuerUrl = response.Parameter.Value;
+    cacheTimestamp = now;
+    return cachedIssuerUrl;
+  } catch (error) {
+    if (error.name === 'ParameterNotFound') {
+      console.error('SSM Parameter not found:', process.env.ISSUER_URL_PARAM_NAME);
+      throw new Error('OIDC issuer URL parameter not found in SSM');
+    } else if (error.name === 'AccessDeniedException') {
+      console.error('Access denied to SSM parameter:', process.env.ISSUER_URL_PARAM_NAME);
+      throw new Error('Access denied to OIDC issuer URL parameter');
+    } else {
+      console.error('Error getting issuer URL from SSM:', error.name, error.message);
+      throw new Error(`Failed to retrieve OIDC issuer URL: ${error.message}`);
+    }
+  }
+}
 
 // Generate RSA key pair for JWT signing
 async function generateKeyPair() {
@@ -76,22 +116,24 @@ async function getSigningKeys() {
 // Create JWT token
 async function createJWT(payload, expiresIn = '1h') {
   const keys = await getSigningKeys();
+  const issuerUrl = await getIssuerUrl();
   
   return jwt.sign(payload, keys.private_key, {
     algorithm: 'RS256',
     expiresIn: expiresIn,
     keyid: keys.kid,
-    issuer: process.env.ISSUER_URL
+    issuer: issuerUrl
   });
 }
 
 // Verify JWT token
 async function verifyJWT(token) {
   const keys = await getSigningKeys();
+  const issuerUrl = await getIssuerUrl();
   
   return jwt.verify(token, keys.public_key, {
     algorithms: ['RS256'],
-    issuer: process.env.ISSUER_URL
+    issuer: issuerUrl
   });
 }
 
@@ -286,6 +328,7 @@ function createHTMLResponse(html, statusCode = 200) {
 }
 
 module.exports = {
+  getIssuerUrl,
   getSigningKeys,
   createJWT,
   verifyJWT,

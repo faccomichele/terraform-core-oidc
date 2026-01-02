@@ -4,7 +4,7 @@ output "api_gateway_url" {
 }
 
 output "oidc_issuer_url" {
-  description = "OIDC Issuer URL"
+  description = "OIDC Issuer URL (computed from var.issuer_url or API Gateway URL). Note: Lambda functions retrieve this from SSM Parameter Store at runtime."
   value       = local.issuer_url
 }
 
@@ -36,4 +36,9 @@ output "s3_bucket_name" {
 output "jwt_signing_key_secret_arn" {
   description = "ARN of the Secrets Manager secret containing JWT signing keys"
   value       = aws_secretsmanager_secret.jwt_keys.arn
+}
+
+output "issuer_url_ssm_parameter" {
+  description = "SSM Parameter name storing the OIDC Issuer URL"
+  value       = aws_ssm_parameter.issuer_url.name
 }
