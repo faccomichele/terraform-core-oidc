@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   dev:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: "[DEV]"
     uses: faccomichele/utils-n-scripts/.github/workflows/terraform-plan-apply.yml@main
     with:
