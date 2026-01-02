@@ -259,12 +259,7 @@ The `user-management` Lambda function can be tested from the AWS Console or AWS 
   "operation": "createUser",
   "username": "testuser",
   "password": "SecurePassword123!",
-  "email": "testuser@example.com",
-  "profile": {
-    "name": "Test User",
-    "given_name": "Test",
-    "family_name": "User"
-  }
+  "email": "testuser@example.com"
 }
 ```
 
@@ -282,7 +277,7 @@ The `user-management` Lambda function can be tested from the AWS Console or AWS 
 # Create a new user
 aws lambda invoke \
   --function-name oidc-provider-dev-user-management \
-  --payload '{"operation":"createUser","username":"testuser","password":"SecurePassword123!","email":"testuser@example.com","profile":{"name":"Test User"}}' \
+  --payload '{"operation":"createUser","username":"testuser","password":"SecurePassword123!","email":"testuser@example.com"}' \
   response.json
 
 # Reset password

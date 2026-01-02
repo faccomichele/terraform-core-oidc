@@ -55,12 +55,7 @@ function validatePassword(password) {
  *   "operation": "createUser",
  *   "username": "newuser",
  *   "password": "SecurePassword123!",
- *   "email": "newuser@example.com",
- *   "profile": {
- *     "name": "New User",
- *     "given_name": "New",
- *     "family_name": "User"
- *   }
+ *   "email": "newuser@example.com"
  * }
  * 
  * Reset Password:
@@ -101,7 +96,7 @@ exports.handler = async (event) => {
  * Handle createUser operation
  */
 async function handleCreateUser(event) {
-  const { username, password, email, profile } = event;
+  const { username, password, email } = event;
   
   // Validate required parameters
   if (!username || !password || !email) {
@@ -132,7 +127,7 @@ async function handleCreateUser(event) {
   }
   
   // Create the user
-  const user = await createUser(username, password, email, profile || {});
+  const user = await createUser(username, password, email);
   
   // Return success response (exclude password_hash)
   const { password_hash, ...userResponse } = user;

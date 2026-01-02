@@ -158,12 +158,7 @@ The easiest way to create users or reset passwords is to use the dedicated `user
   "operation": "createUser",
   "username": "john",
   "password": "SecurePassword123!",
-  "email": "john@example.com",
-  "profile": {
-    "name": "John Doe",
-    "given_name": "John",
-    "family_name": "Doe"
-  }
+  "email": "john@example.com"
 }
 ```
 
@@ -192,7 +187,7 @@ aws dynamodb put-item \
     "username": {"S": "john"},
     "password_hash": {"S": "<bcrypt-hash>"},
     "email": {"S": "john@example.com"},
-    "profile": {"M": {"name": {"S": "John Doe"}}},
+    "email_verified": {"BOOL": false},
     "created_at": {"S": "2024-01-01T00:00:00Z"},
     "updated_at": {"S": "2024-01-01T00:00:00Z"}
   }'

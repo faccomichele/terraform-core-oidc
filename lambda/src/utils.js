@@ -186,7 +186,7 @@ async function getUserByUsername(username) {
   return items.length > 0 ? items[0] : null;
 }
 
-async function createUser(username, password, email, profile = {}) {
+async function createUser(username, password, email) {
   const userId = uuidv4();
   
   // Use bcrypt for secure password hashing
@@ -199,7 +199,6 @@ async function createUser(username, password, email, profile = {}) {
     password_hash: passwordHash,
     email: email,
     email_verified: false,
-    profile: profile,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
