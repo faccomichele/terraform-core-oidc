@@ -48,3 +48,33 @@ output "user_management_lambda_name" {
   description = "Name of the user management Lambda function"
   value       = aws_lambda_function.user_management.function_name
 }
+
+output "s3_assets_bucket_name" {
+  description = "S3 bucket name for static assets (login and landing pages)"
+  value       = aws_s3_bucket.assets.bucket
+}
+
+output "login_page_url" {
+  description = "URL of the custom login page"
+  value       = "https://${aws_s3_bucket.assets.bucket_regional_domain_name}/login.html"
+}
+
+output "landing_page_url" {
+  description = "URL of the application selection landing page"
+  value       = "https://${aws_s3_bucket.assets.bucket_regional_domain_name}/landing.html"
+}
+
+output "dynamodb_applications_table" {
+  description = "DynamoDB table name for applications"
+  value       = aws_dynamodb_table.applications.name
+}
+
+output "dynamodb_user_applications_table" {
+  description = "DynamoDB table name for user-application mappings"
+  value       = aws_dynamodb_table.user_applications.name
+}
+
+output "dynamodb_sessions_table" {
+  description = "DynamoDB table name for sessions"
+  value       = aws_dynamodb_table.sessions.name
+}

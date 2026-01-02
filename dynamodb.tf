@@ -98,3 +98,73 @@ resource "aws_dynamodb_table" "refresh_tokens" {
     Name = "${local.project_name}-${local.environment}-refresh-tokens"
   }
 }
+
+# DynamoDB table for applications (SSO applications that users can access)
+resource "aws_dynamodb_table" "applications" {
+  name         = "${local.project_name}-${local.environment}-applications"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "application_id"
+
+  attribute {
+    name = "application_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "client_id"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "client-index"
+    hash_key        = "client_id"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Name = "${local.project_name}-${local.environment}-applications"
+  }
+}
+
+# DynamoDB table for user-application mappings
+resource "aws_dynamodb_table" "user_applications" {
+  name         = "${local.project_name}-${local.environment}-user-applications"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "user_id"
+  range_key    = "application_id"
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "application_id"
+    type = "S"
+  }
+
+  tags = {
+    Name = "${local.project_name}-${local.environment}-user-applications"
+  }
+}
+
+# DynamoDB table for sessions (temporary session tokens for multi-step flow)
+resource "aws_dynamodb_table" "sessions" {
+  name         = "${local.project_name}-${local.environment}-sessions"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "session_id"
+
+  attribute {
+    name = "session_id"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "expires_at"
+    enabled        = true
+  }
+
+  tags = {
+    Name = "${local.project_name}-${local.environment}-sessions"
+  }
+}

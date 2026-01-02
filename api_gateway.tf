@@ -59,6 +59,20 @@ resource "aws_api_gateway_resource" "userinfo" {
   path_part   = "userinfo"
 }
 
+# /landing resource
+resource "aws_api_gateway_resource" "landing" {
+  rest_api_id = aws_api_gateway_rest_api.oidc.id
+  parent_id   = aws_api_gateway_rest_api.oidc.root_resource_id
+  path_part   = "landing"
+}
+
+# /complete-auth resource
+resource "aws_api_gateway_resource" "complete_auth" {
+  rest_api_id = aws_api_gateway_rest_api.oidc.id
+  parent_id   = aws_api_gateway_rest_api.oidc.root_resource_id
+  path_part   = "complete-auth"
+}
+
 # Methods and Integrations
 # Wellknown endpoint
 resource "aws_api_gateway_method" "wellknown_get" {
@@ -177,6 +191,40 @@ resource "aws_api_gateway_integration" "userinfo_post" {
   uri                     = aws_lambda_function.userinfo.invoke_arn
 }
 
+# Landing endpoint (GET)
+resource "aws_api_gateway_method" "landing_get" {
+  rest_api_id   = aws_api_gateway_rest_api.oidc.id
+  resource_id   = aws_api_gateway_resource.landing.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "landing_get" {
+  rest_api_id             = aws_api_gateway_rest_api.oidc.id
+  resource_id             = aws_api_gateway_resource.landing.id
+  http_method             = aws_api_gateway_method.landing_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.landing.invoke_arn
+}
+
+# Complete-auth endpoint (GET)
+resource "aws_api_gateway_method" "complete_auth_get" {
+  rest_api_id   = aws_api_gateway_rest_api.oidc.id
+  resource_id   = aws_api_gateway_resource.complete_auth.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "complete_auth_get" {
+  rest_api_id             = aws_api_gateway_rest_api.oidc.id
+  resource_id             = aws_api_gateway_resource.complete_auth.id
+  http_method             = aws_api_gateway_method.complete_auth_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.complete_auth.invoke_arn
+}
+
 # CORS support for all endpoints
 resource "aws_api_gateway_method" "wellknown_options" {
   rest_api_id   = aws_api_gateway_rest_api.oidc.id
@@ -247,6 +295,12 @@ resource "aws_api_gateway_deployment" "oidc" {
       aws_api_gateway_method.userinfo_post.id,
       aws_api_gateway_integration.userinfo_get.id,
       aws_api_gateway_integration.userinfo_post.id,
+      aws_api_gateway_resource.landing.id,
+      aws_api_gateway_method.landing_get.id,
+      aws_api_gateway_integration.landing_get.id,
+      aws_api_gateway_resource.complete_auth.id,
+      aws_api_gateway_method.complete_auth_get.id,
+      aws_api_gateway_integration.complete_auth_get.id,
     ]))
   }
 

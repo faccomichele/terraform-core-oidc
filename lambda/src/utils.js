@@ -263,7 +263,7 @@ async function validateClient(clientId, clientSecret = null, redirectUri = null)
 }
 
 // Authorization code operations
-async function createAuthCode(userId, clientId, redirectUri, scope, codeChallenge = null, codeChallengeMethod = null) {
+async function createAuthCode(userId, clientId, redirectUri, scope, codeChallenge = null, codeChallengeMethod = null, applicationId = null, account = null) {
   const code = crypto.randomBytes(32).toString('base64url');
   const expiresAt = Math.floor(Date.now() / 1000) + 600; // 10 minutes
   
@@ -278,6 +278,14 @@ async function createAuthCode(userId, clientId, redirectUri, scope, codeChalleng
     code_challenge: codeChallenge,
     code_challenge_method: codeChallengeMethod
   };
+  
+  // Add optional fields
+  if (applicationId) {
+    authCode.application_id = applicationId;
+  }
+  if (account) {
+    authCode.account = account;
+  }
   
   await putItem(TABLES.authCodes, authCode);
   return code;
