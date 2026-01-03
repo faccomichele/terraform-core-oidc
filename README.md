@@ -8,9 +8,9 @@ This project implements a complete OIDC provider using:
 
 - **API Gateway**: REST API endpoints for OIDC protocol
 - **Lambda**: Serverless compute for authentication and token logic
-- **DynamoDB**: Storage for users, OAuth clients, authorization codes, and refresh tokens
+- **DynamoDB**: Storage for users, OAuth clients, authorization codes, refresh tokens, applications, and sessions
 - **SSM Parameter Store**: Secure encrypted storage for JWT signing keys (RSA)
-- **S3**: Storage for static assets
+- **S3**: Storage for static assets (custom login and landing pages)
 
 ### OIDC Endpoints
 
@@ -19,6 +19,8 @@ This project implements a complete OIDC provider using:
 - `/token` - Token endpoint (POST)
 - `/userinfo` - UserInfo endpoint (GET/POST)
 - `/jwks` - JSON Web Key Set endpoint
+- `/landing` - Application selection landing page endpoint
+- `/complete-auth` - Complete authentication after application selection
 
 ## Features
 
@@ -28,6 +30,10 @@ This project implements a complete OIDC provider using:
 - ✅ User authentication and profile management
 - ✅ OAuth 2.0 client management
 - ✅ Standard OIDC claims (openid, profile, email)
+- ✅ **Custom login web page with modern UI**
+- ✅ **Application selection landing page for SSO**
+- ✅ **Multi-account/multi-application support**
+- ✅ **AWS Console SSO integration via IAM Identity Provider**
 - ✅ Fully serverless and scalable
 - ✅ Pay-per-use pricing model
 
@@ -212,6 +218,74 @@ aws dynamodb put-item \
   }'
 ```
 
+## SSO and Application Management
+
+### Custom Login Experience
+
+This OIDC provider now features a custom login web page with:
+
+- Modern, responsive UI with gradient design
+- Secure credential submission via POST
+- Error handling with user-friendly messages
+- Seamless redirection flow
+
+### Application Selection Landing Page
+
+After successful authentication, users are presented with a landing page where they can:
+
+- View all applications they have access to
+- Select different AWS accounts or applications
+- See application descriptions and account badges
+- Choose which role/account to use before being redirected
+
+### AWS Console SSO Integration
+
+You can configure this OIDC provider for AWS Console login via IAM Identity Provider. This enables:
+
+- Single Sign-On to multiple AWS accounts
+- Role-based access control through OIDC federation
+- Centralized user authentication
+- Application/account selection before Console access
+
+**See [AWS_CONSOLE_SSO.md](AWS_CONSOLE_SSO.md) for complete setup instructions**, including:
+- Registering the OIDC provider in AWS IAM
+- Creating IAM roles for OIDC federation
+- Configuring application and account mappings
+- Testing the integration
+
+### Managing Applications
+
+Applications represent different services or AWS accounts that users can access:
+
+**Register an application:**
+
+```bash
+aws dynamodb put-item \
+  --table-name oidc-provider-dev-applications \
+  --item '{
+    "application_id": {"S": "my-app"},
+    "name": {"S": "My Application"},
+    "description": {"S": "Production application"},
+    "icon": {"S": "🚀"},
+    "enabled": {"BOOL": true},
+    "client_id": {"S": "test-client"},
+    "redirect_url": {"S": "https://myapp.com/callback"}
+  }'
+```
+
+**Grant user access to application:**
+
+```bash
+aws dynamodb put-item \
+  --table-name oidc-provider-dev-user-applications \
+  --item '{
+    "user_id": {"S": "user-123"},
+    "application_id": {"S": "my-app"},
+    "accounts": {"L": [{"S": "Production"}]},
+    "created_at": {"S": "2024-01-01T00:00:00Z"}
+  }'
+```
+
 ## Infrastructure Components
 
 ### DynamoDB Tables
@@ -220,6 +294,9 @@ aws dynamodb put-item \
 - **clients**: OAuth 2.0 client registrations
 - **auth-codes**: Authorization codes (10-minute TTL)
 - **refresh-tokens**: Refresh tokens (30-day TTL)
+- **applications**: SSO application registrations with redirect URLs and role ARNs
+- **user-applications**: User-to-application access mappings
+- **sessions**: Temporary session tokens for multi-step authentication flow (10-minute TTL)
 
 ### Lambda Functions
 
@@ -227,10 +304,17 @@ All Lambda functions are Node.js 18.x with shared utilities:
 
 - **wellknown**: Returns OIDC discovery document
 - **jwks**: Returns public keys for JWT verification
-- **auth**: Handles authorization requests and user login
+- **auth**: Handles authorization requests and redirects to custom login page
 - **token**: Issues access tokens, ID tokens, and refresh tokens
 - **userinfo**: Returns user profile information
+- **landing**: Returns available applications for authenticated users
+- **complete-auth**: Completes authentication after application selection
 - **user-management**: Administrative function for creating users and resetting passwords (console invocation only)
+
+### Static Assets (S3)
+
+- **login.html**: Custom login page with modern UI
+- **landing.html**: Application selection landing page
 
 ### Security
 
@@ -240,6 +324,7 @@ All Lambda functions are Node.js 18.x with shared utilities:
 - DynamoDB encryption at rest
 - S3 bucket encryption
 - API Gateway with CloudWatch logging
+- Session-based multi-step authentication flow
 
 ## Terraform Outputs
 
@@ -251,7 +336,12 @@ All Lambda functions are Node.js 18.x with shared utilities:
 | `dynamodb_users_table` | Users table name |
 | `dynamodb_clients_table` | Clients table name |
 | `dynamodb_auth_codes_table` | Auth codes table name |
-| `s3_bucket_name` | Assets bucket name |
+| `dynamodb_applications_table` | Applications table name |
+| `dynamodb_user_applications_table` | User-application mappings table name |
+| `dynamodb_sessions_table` | Sessions table name |
+| `s3_assets_bucket_name` | S3 bucket name for static assets |
+| `login_page_url` | URL of custom login page |
+| `landing_page_url` | URL of application selection landing page |
 | `jwt_signing_key_parameter_name` | SSM Parameter name for JWT keys (encrypted) |
 
 ## Development
@@ -271,16 +361,22 @@ All Lambda functions are Node.js 18.x with shared utilities:
 ├── iam.tf                  # IAM roles and policies
 ├── lambda/
 │   └── src/
-│       ├── package.json    # Node.js dependencies
-│       ├── utils.js        # Shared utilities
-│       ├── wellknown.js    # Discovery endpoint
-│       ├── jwks.js         # JWKS endpoint
-│       ├── auth.js         # Authorization endpoint
-│       ├── token.js        # Token endpoint
-│       └── userinfo.js     # UserInfo endpoint
+│       ├── package.json       # Node.js dependencies
+│       ├── utils.js           # Shared utilities
+│       ├── wellknown.js       # Discovery endpoint
+│       ├── jwks.js            # JWKS endpoint
+│       ├── auth.js            # Authorization endpoint
+│       ├── token.js           # Token endpoint
+│       ├── userinfo.js        # UserInfo endpoint
+│       ├── landing.js         # Landing page endpoint
+│       ├── complete-auth.js   # Complete auth endpoint
+│       └── user-management.js # User management
+├── static/
+│   ├── login.html             # Custom login page
+│   └── landing.html           # Application selection page
 └── scripts/
-    ├── setup.sh            # Setup script
-    └── seed-data.sh        # Data seeding script
+    ├── setup.sh               # Setup script
+    └── seed-data.sh           # Data seeding script
 ```
 
 ### Customization
@@ -316,12 +412,12 @@ terraform destroy
 - **Demo Implementation**: This is for demonstration and testing purposes
 - **No Rate Limiting**: Implement rate limiting for production use
 - **User Registration**: Use the user-management Lambda function from AWS Console to create users and reset passwords
-- **No Consent Screen**: Authorization is immediate after login
 - **Limited Scopes**: Only basic OpenID Connect scopes supported
 - **API Gateway Logs**: Data trace enabled - may log sensitive information
 - **No Token Rotation**: JWT signing keys are not automatically rotated
+- **Static Assets**: Login and landing pages are served from S3 with public read access
 
-**Password Security**: Now uses bcrypt with salt rounds of 10 for secure password hashing.
+**Password Security**: Uses bcrypt with salt rounds of 10 for secure password hashing.
 
 **IMPORTANT**: Do not use this implementation as-is in production without implementing proper security measures!
 
@@ -329,6 +425,11 @@ terraform destroy
 
 - [x] Password reset functionality (added in user-management Lambda)
 - [x] Better password hashing with bcrypt (completed)
+- [x] Custom login web page (completed with modern UI)
+- [x] Application selection landing page (completed)
+- [x] Multi-account/multi-application support (completed)
+- [x] AWS Console SSO integration (completed)
+- [x] Session management (completed for multi-step auth flow)
 - [ ] User registration endpoint (exposed via API)
 - [ ] Implement consent screen
 - [ ] Add support for more grant types (client credentials, implicit)
@@ -337,7 +438,7 @@ terraform destroy
 - [ ] Admin dashboard
 - [ ] Support for custom claims
 - [ ] Multi-factor authentication
-- [ ] Session management
+- [ ] CloudFront distribution for static assets
 
 ## License
 

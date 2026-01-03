@@ -1,59 +1,19 @@
 const {
   validateClient,
-  createAuthCode,
   createErrorResponse,
   createHTMLResponse,
   verifyUserPassword
 } = require('./utils');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const crypto = require('crypto');
 
-// Simple login page HTML
-function getLoginPage(clientId, redirectUri, state, scope, codeChallenge, codeChallengeMethod, error = null) {
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Login - OIDC Provider</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }
-    h2 { color: #333; }
-    form { background: #f5f5f5; padding: 20px; border-radius: 5px; }
-    label { display: block; margin: 10px 0 5px; }
-    input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 3px; }
-    button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    .error { color: red; margin-bottom: 10px; }
-    .info { color: #666; margin-top: 20px; font-size: 14px; }
-  </style>
-</head>
-<body>
-  <h2>Sign In</h2>
-  ${error ? `<div class="error">${error}</div>` : ''}
-  <form method="POST" action="/auth">
-    <input type="hidden" name="client_id" value="${clientId}">
-    <input type="hidden" name="redirect_uri" value="${redirectUri}">
-    <input type="hidden" name="response_type" value="code">
-    <input type="hidden" name="scope" value="${scope || 'openid profile email'}">
-    <input type="hidden" name="state" value="${state || ''}">
-    ${codeChallenge ? `<input type="hidden" name="code_challenge" value="${codeChallenge}">` : ''}
-    ${codeChallengeMethod ? `<input type="hidden" name="code_challenge_method" value="${codeChallengeMethod}">` : ''}
-    
-    <label for="username">Username:</label>
-    <input type="text" id="username" name="username" required>
-    
-    <label for="password">Password:</label>
-    <input type="password" id="password" name="password" required>
-    
-    <button type="submit">Sign In</button>
-  </form>
-  <div class="info">
-    <p><strong>Note:</strong> This is a demo login page.</p>
-    <p>For production, remove hints and implement proper security measures.</p>
-  </div>
-</body>
-</html>
-  `;
-}
+const dynamoClient = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
+
+const SESSIONS_TABLE = process.env.SESSIONS_TABLE;
+const LOGIN_PAGE_URL = process.env.LOGIN_PAGE_URL;
+const LANDING_PAGE_URL = process.env.LANDING_PAGE_URL;
 
 // Parse form data from request body
 function parseFormData(body) {
@@ -109,53 +69,104 @@ exports.handler = async (event) => {
       return createErrorResponse('unsupported_response_type', 'Only response_type=code is supported');
     }
     
-    // If GET request or no credentials, show login page
+    // If GET request (no credentials), redirect to custom login page
     if (method === 'GET' || !username || !password) {
-      return createHTMLResponse(getLoginPage(
-        client_id,
-        redirect_uri,
-        state,
-        scope || 'openid profile email',
-        code_challenge,
-        code_challenge_method
-      ));
+      // Build login page URL with parameters
+      const loginUrl = new URL(LOGIN_PAGE_URL);
+      loginUrl.searchParams.append('client_id', client_id);
+      loginUrl.searchParams.append('redirect_uri', redirect_uri);
+      loginUrl.searchParams.append('response_type', response_type);
+      loginUrl.searchParams.append('scope', scope || 'openid profile email');
+      if (state) loginUrl.searchParams.append('state', state);
+      if (code_challenge) loginUrl.searchParams.append('code_challenge', code_challenge);
+      if (code_challenge_method) loginUrl.searchParams.append('code_challenge_method', code_challenge_method);
+      
+      // Add API URL so the login page can POST back
+      const apiUrl = getApiUrl(event);
+      if (apiUrl) {
+        loginUrl.searchParams.append('api_url', apiUrl);
+      }
+      
+      return {
+        statusCode: 302,
+        headers: {
+          'Location': loginUrl.toString(),
+          'Cache-Control': 'no-store',
+          'Pragma': 'no-cache'
+        },
+        body: ''
+      };
     }
     
     // POST request with credentials - authenticate user
     const user = await verifyUserPassword(username, password);
     if (!user) {
-      return createHTMLResponse(getLoginPage(
-        client_id,
-        redirect_uri,
-        state,
-        scope || 'openid profile email',
-        code_challenge,
-        code_challenge_method,
-        'Invalid username or password'
-      ), 401);
+      // Redirect back to login page with error
+      const loginUrl = new URL(LOGIN_PAGE_URL);
+      loginUrl.searchParams.append('client_id', client_id);
+      loginUrl.searchParams.append('redirect_uri', redirect_uri);
+      loginUrl.searchParams.append('response_type', response_type);
+      loginUrl.searchParams.append('scope', scope || 'openid profile email');
+      if (state) loginUrl.searchParams.append('state', state);
+      if (code_challenge) loginUrl.searchParams.append('code_challenge', code_challenge);
+      if (code_challenge_method) loginUrl.searchParams.append('code_challenge_method', code_challenge_method);
+      loginUrl.searchParams.append('error', 'invalid_credentials');
+      loginUrl.searchParams.append('error_description', 'Invalid username or password');
+      
+      // Add API URL
+      const apiUrl = getApiUrl(event);
+      if (apiUrl) {
+        loginUrl.searchParams.append('api_url', apiUrl);
+      }
+      
+      return {
+        statusCode: 302,
+        headers: {
+          'Location': loginUrl.toString(),
+          'Cache-Control': 'no-store',
+          'Pragma': 'no-cache'
+        },
+        body: ''
+      };
     }
     
-    // Generate authorization code
-    const code = await createAuthCode(
-      user.user_id,
-      client_id,
-      redirect_uri,
-      scope || 'openid profile email',
-      code_challenge,
-      code_challenge_method
-    );
+    // Create session for multi-step flow
+    const sessionId = crypto.randomBytes(32).toString('base64url');
+    const sessionData = {
+      session_id: sessionId,
+      user_id: user.user_id,
+      client_id: client_id,
+      redirect_uri: redirect_uri,
+      scope: scope || 'openid profile email',
+      state: state,
+      code_challenge: code_challenge,
+      code_challenge_method: code_challenge_method,
+      expires_at: Math.floor(Date.now() / 1000) + 600, // 10 minutes
+      created_at: new Date().toISOString()
+    };
     
-    // Redirect back to client with code
-    const redirectUrl = new URL(redirect_uri);
-    redirectUrl.searchParams.set('code', code);
-    if (state) {
-      redirectUrl.searchParams.set('state', state);
+    await docClient.send(new PutCommand({
+      TableName: SESSIONS_TABLE,
+      Item: sessionData
+    }));
+    
+    // Redirect to landing page for application selection
+    const landingUrl = new URL(LANDING_PAGE_URL);
+    landingUrl.searchParams.append('session', sessionId);
+    landingUrl.searchParams.append('client_id', client_id);
+    landingUrl.searchParams.append('redirect_uri', redirect_uri);
+    if (state) landingUrl.searchParams.append('state', state);
+    
+    // Add API URL for landing page
+    const apiUrl = getApiUrl(event);
+    if (apiUrl) {
+      landingUrl.searchParams.append('api_url', apiUrl);
     }
     
     return {
       statusCode: 302,
       headers: {
-        'Location': redirectUrl.toString(),
+        'Location': landingUrl.toString(),
         'Cache-Control': 'no-store',
         'Pragma': 'no-cache'
       },
@@ -167,3 +178,30 @@ exports.handler = async (event) => {
     return createErrorResponse('server_error', 'Internal server error', 500);
   }
 };
+
+// Helper function to extract API URL from event
+function getApiUrl(event) {
+  try {
+    // Get from request context
+    const requestContext = event.requestContext;
+    if (requestContext) {
+      const domainName = requestContext.domainName;
+      const stage = requestContext.stage;
+      if (domainName && stage) {
+        return `https://${domainName}/${stage}`;
+      }
+    }
+    
+    // Fallback: try to get from headers
+    const host = event.headers?.Host || event.headers?.host;
+    const stage = event.requestContext?.stage;
+    if (host && stage) {
+      return `https://${host}/${stage}`;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting API URL:', error);
+    return null;
+  }
+}

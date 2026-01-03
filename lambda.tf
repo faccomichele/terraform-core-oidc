@@ -70,6 +70,9 @@ resource "aws_lambda_function" "auth" {
       AUTH_CODES_TABLE      = aws_dynamodb_table.auth_codes.name
       REFRESH_TOKENS_TABLE  = aws_dynamodb_table.refresh_tokens.name
       JWT_KEYS_PARAM_NAME   = aws_ssm_parameter.jwt_keys.name
+      SESSIONS_TABLE        = aws_dynamodb_table.sessions.name
+      LOGIN_PAGE_URL        = "https://${aws_s3_bucket.assets.bucket_regional_domain_name}/login.html"
+      LANDING_PAGE_URL      = "https://${aws_s3_bucket.assets.bucket_regional_domain_name}/landing.html"
     }
   }
 
@@ -199,4 +202,80 @@ resource "aws_lambda_function" "user_management" {
     Name = "${local.project_name}-${local.environment}-user-management"
   }
 }
+
+# Lambda function for landing page (application selection)
+resource "aws_lambda_function" "landing" {
+  filename         = data.archive_file.lambda_zip.output_path
+  function_name    = "${local.project_name}-${local.environment}-landing"
+  role             = aws_iam_role.lambda_exec.arn
+  handler          = "landing.handler"
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  runtime          = "nodejs18.x"
+  timeout          = 30
+  memory_size      = 256
+
+  environment {
+    variables = {
+      ISSUER_URL_PARAM_NAME    = local.issuer_url_parameter
+      USERS_TABLE              = aws_dynamodb_table.users.name
+      CLIENTS_TABLE            = aws_dynamodb_table.clients.name
+      AUTH_CODES_TABLE         = aws_dynamodb_table.auth_codes.name
+      REFRESH_TOKENS_TABLE     = aws_dynamodb_table.refresh_tokens.name
+      JWT_KEYS_PARAM_NAME      = aws_ssm_parameter.jwt_keys.name
+      SESSIONS_TABLE           = aws_dynamodb_table.sessions.name
+      APPLICATIONS_TABLE       = aws_dynamodb_table.applications.name
+      USER_APPLICATIONS_TABLE  = aws_dynamodb_table.user_applications.name
+    }
+  }
+
+  tags = {
+    Name = "${local.project_name}-${local.environment}-landing"
+  }
+}
+
+resource "aws_lambda_permission" "landing" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.landing.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.oidc.execution_arn}/*/*"
+}
+
+# Lambda function for completing authentication after application selection
+resource "aws_lambda_function" "complete_auth" {
+  filename         = data.archive_file.lambda_zip.output_path
+  function_name    = "${local.project_name}-${local.environment}-complete-auth"
+  role             = aws_iam_role.lambda_exec.arn
+  handler          = "complete-auth.handler"
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  runtime          = "nodejs18.x"
+  timeout          = 30
+  memory_size      = 256
+
+  environment {
+    variables = {
+      ISSUER_URL_PARAM_NAME = local.issuer_url_parameter
+      USERS_TABLE           = aws_dynamodb_table.users.name
+      CLIENTS_TABLE         = aws_dynamodb_table.clients.name
+      AUTH_CODES_TABLE      = aws_dynamodb_table.auth_codes.name
+      REFRESH_TOKENS_TABLE  = aws_dynamodb_table.refresh_tokens.name
+      JWT_KEYS_PARAM_NAME   = aws_ssm_parameter.jwt_keys.name
+      SESSIONS_TABLE        = aws_dynamodb_table.sessions.name
+      APPLICATIONS_TABLE    = aws_dynamodb_table.applications.name
+    }
+  }
+
+  tags = {
+    Name = "${local.project_name}-${local.environment}-complete-auth"
+  }
+}
+
+resource "aws_lambda_permission" "complete_auth" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.complete_auth.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.oidc.execution_arn}/*/*"
+}
+
 

@@ -78,7 +78,11 @@ resource "aws_iam_role_policy" "lambda_oidc" {
           aws_dynamodb_table.clients.arn,
           aws_dynamodb_table.auth_codes.arn,
           aws_dynamodb_table.refresh_tokens.arn,
-          "${aws_dynamodb_table.refresh_tokens.arn}/index/*"
+          "${aws_dynamodb_table.refresh_tokens.arn}/index/*",
+          aws_dynamodb_table.applications.arn,
+          "${aws_dynamodb_table.applications.arn}/index/*",
+          aws_dynamodb_table.user_applications.arn,
+          aws_dynamodb_table.sessions.arn
         ]
       },
 
@@ -92,6 +96,17 @@ resource "aws_iam_role_policy" "lambda_oidc" {
         Resource = [
           aws_ssm_parameter.issuer_url.arn,
           aws_ssm_parameter.jwt_keys.arn
+        ]
+      },
+
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject"
+        ]
+        Resource = [
+          "${aws_s3_bucket.assets.arn}/*"
         ]
       }
     ]
